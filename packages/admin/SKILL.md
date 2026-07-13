@@ -1,6 +1,6 @@
 ---
 name: admin
-description: "破茧计划 MCN 编导中台管理员技能。当需要审批编导提交的静态库写入提案、读写动态知识库（热点/对标白名单/爆款候选）、处理人工审核队列、签发或吊销 token、新增或下线 IP、校准打分器、重建索引时使用。配合 admin token（ip_scope=*）使用，拥有全 IP 读写与审批权限。"
+description: "破茧计划 MCN 编导中台管理员技能 · Knowledge Proposal v2.0。当需要审批编导提交的知识提案（Knowledge Proposal）、读写动态知识库（热点/对标白名单/爆款候选）、处理人工审核队列、签发或吊销 token、新增或下线 IP、校准打分器、重建索引时使用。配合 admin token（ip_scope=*）使用，拥有全 IP 读写与审批权限，是唯一可执行 Relay submit 的角色。"
 ---
 
 # admin — 破茧计划管理员技能

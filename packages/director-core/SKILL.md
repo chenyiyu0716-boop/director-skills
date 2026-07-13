@@ -1,6 +1,6 @@
 ---
 name: director-core
-description: "破茧计划 MCN 短视频编导母技能（所有 IP 共用）。当编导要为某个博主 IP 写商单脚本、日常 vlog 脚本，或做选题、对标、复盘时使用。本技能管通用工作流、知识库 API 调用、打分质检门、写入提案与对话内即时学习。生成由你（当前 Claude）本地完成，FastAPI 只做数据/权限层；具体 IP 人设由对应的 director-ip-<slug> 子包 + API 动态加载。配合 director token 使用。"
+description: "破茧计划 MCN 短视频编导母技能（所有 IP 共用）· Knowledge Proposal v2.0。当编导要为某个博主 IP 写商单脚本、日常 vlog 脚本，或做选题、对标、复盘时使用。本技能管通用工作流、知识库 API 调用、打分质检门、知识提案（Knowledge Proposal）与对话内即时学习。你是知识提案者（Knowledge Contributor），不是知识库写入者。生成由你（当前 Claude）本地完成，FastAPI 只做数据/权限层；具体 IP 人设由对应的 director-ip-<slug> 子包 + API 动态加载。配合 director token 使用。"
 ---
 
 # director-core — 破茧计划编导母技能
