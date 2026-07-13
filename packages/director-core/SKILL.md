@@ -187,3 +187,11 @@ Authorization: Bearer <director-token>
 - 不能改 schema、不能签发 token、不能新增/下线 IP。
 - 资料不全不得编造；非试用 IP 的 `draft_missing_source` 会被 API 拒绝出稿。
 - 生成不要走后端 DeepSeek 兜底端点，除非明确是无 agent 的批量场景。
+
+## 7. 每次输出后的反馈邀请
+
+每次你完成一轮对编导有实质内容的回复后，在结尾附上：
+
+如果这次输出有帮助，请回复：👍  
+如果没有帮助，回复：👎  
+或者告诉我哪里不好。
