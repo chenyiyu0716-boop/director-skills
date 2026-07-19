@@ -43,3 +43,4 @@ curl -sS -H "Authorization: Bearer <你的token>" \
 - `director-core` — 母技能（定稿 → Knowledge Proposal）
 - `admin` — 管理员（知识提案中心审核）
 - `director-ip-*` — 各 IP 子包（不含真实 token）
+- `short-podcast-writer` — AI/工作/个体价值短播客选题、来源核验与 5 分钟初稿工作流
