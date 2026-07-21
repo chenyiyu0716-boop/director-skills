@@ -127,7 +127,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fetch-podcast", action="store_true", help="Live-run memory-B douyin search targeted at 抖音播客/音频 (podcast clips).")
     parser.add_argument("--memory-b-dir", help="memory-B project root (for --fetch-douyin / --fetch-podcast).")
     parser.add_argument("--keywords", default="", help="Comma-separated extra keywords for --fetch-douyin / --fetch-podcast.")
-    parser.add_argument("--max-results", type=int, default=8, help="Max items to fetch.")
+    parser.add_argument("--max-results", type=int, default=5, help="Max items to fetch.")
+    parser.add_argument("--max-scrolls", type=int, default=2, help="Max search-result scrolls per keyword (keeps live fetch within timeout on software-rendered Chrome).")
     parser.add_argument("--reference-lookback-days", type=int, default=7, help="Lookback window for --fetch-douyin.")
     parser.add_argument("--podcast-lookback-days", type=int, default=30, help="Lookback window for --fetch-podcast (podcasts publish less often).")
     parser.add_argument("--podcast-min-likes", type=int, default=2000, help="Min likes for --fetch-podcast (lower than the video default).")
@@ -235,6 +236,38 @@ def load_reference_file(ref_dir: str, topic: str) -> str | None:
     return max(pool, key=lambda f: os.path.getmtime(f))
 
 
+def _cdb_env() -> None:
+    """Inject DOUYIN_CDP_URL + HEADLESS into the current process env so the
+    memory-B `reference:douyin` subprocess (which we let inherit the full env)
+    routes through CDP to a running real Chrome (default http://127.0.0.1:9223).
+    With memory-B's preferPersistent=false, DOUYIN_CDP_URL makes it reuse the
+    trusted real-Chrome session instead of Playwright's bundled Chromium."""
+    os.environ["DOUYIN_CDP_URL"] = os.environ.get("DOUYIN_CDP_URL", "http://127.0.0.1:9223")
+    os.environ["HEADLESS"] = "false"
+
+
+def _check_cdp() -> bool:
+    """Warn (non-fatal) if the real-Chrome CDP endpoint is not reachable."""
+    import urllib.request
+
+    cdp = os.environ.get("DOUYIN_CDP_URL", "http://127.0.0.1:9223")
+    try:
+        with urllib.request.urlopen(cdp.rstrip("/") + "/json/version", timeout=4) as r:
+            return r.status == 200
+    except Exception:  # noqa: BLE001
+        print(
+            "[warn] 未检测到真实 Chrome 的 CDP 端点（%s）。\n"
+            "       请先启动真实 Chrome 并在其中登录/通过抖音验证：\n"
+            '         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\\n'
+            "           --no-sandbox --disable-gpu --remote-debugging-port=9223 \\\n"
+            '           --user-data-dir="$HOME/Library/Application Support/MemoryB/douyin-reference-profile"\n'
+            "       否则 memory-B 会退回 Playwright 持久 profile（很可能被抖音验证墙挡下）。" % cdp,
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
 def fetch_douyin(args: argparse.Namespace) -> Any:
     mb = resolve_memory_b_dir(args.memory_b_dir)
     if not mb:
@@ -245,12 +278,14 @@ def fetch_douyin(args: argparse.Namespace) -> Any:
         "--topic", args.topic,
         "--lookback-days", str(args.reference_lookback_days),
         "--max-results", str(args.max_results),
+        "--max-scrolls", str(args.max_scrolls),
     ]
     if args.keywords:
         cmd += ["--keywords", args.keywords]
+    _check_cdp()
     print(f"[info] 实时抓取 memory-B：{' '.join(cmd)}", file=sys.stderr)
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=540)
     except Exception as exc:  # noqa: BLE001
         raise SystemExit(f"运行 memory-B 抓取失败：{exc}")
     out = f"{proc.stdout or ''}\n{proc.stderr or ''}"
@@ -284,11 +319,13 @@ def fetch_podcast(args: argparse.Namespace) -> Any:
         "--lookback-days", str(args.podcast_lookback_days),
         "--min-likes", str(args.podcast_min_likes),
         "--max-results", str(args.max_results),
+        "--max-scrolls", str(args.max_scrolls),
         "--out-dir", "logs/instant_reference_podcast",
     ]
     print(f"[info] 实时抓播客（memory-B）：{' '.join(cmd)}", file=sys.stderr)
+    _check_cdp()
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=540)
     except Exception as exc:  # noqa: BLE001
         raise SystemExit(f"运行 memory-B 播客抓取失败：{exc}")
     out = f"{proc.stdout or ''}\n{proc.stderr or ''}"
@@ -502,7 +539,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> str | None:
         url = f"{base_url}/v1/messages"
         body = {
             "model": model,
-            "max_tokens": 4000,
+            "max_tokens": 8000,
             "system": system_prompt,
             "messages": [{"role": "user", "content": user_prompt}],
         }
@@ -579,6 +616,7 @@ def generate_payload(topic: str, days: int, sources: list[Source], voice_text: s
         '  "topics": [ {"title": str, "copy": str, "emotional_point": str, "hook": str,'
         ' "score": int(0-100), "source_refs": [str]} ],  # 恰好3个，按传播潜力50%+情绪共鸣50%打分\n'
         '  "best_topic_title": str,  # 三个选题中推荐写成5分钟稿的标题\n'
+        '  "best_topic_reason": str,  # 1-2句话，说明为什么这个选题最适合做本期5分钟稿，必须紧扣本期主题与已核验来源，不要套用固定套路\n'
         '  "draft": str,  # 完整5分钟稿件，900-1200字，含[开场][来源引入][情绪翻译][观点展开][生活落点][结尾]六段标注，[来源引入]中引用来源编号如#1\n'
         '  "title_alternatives": [str, str, str, str],  # 4-5条\n'
         '  "release_intro": str,  # 发布简介1段\n'
@@ -833,11 +871,15 @@ def render_report(
     if best:
         lines.append(f"**{best['title']}**")
         lines.append("")
-        lines.append(
-            "它最适合做成本期，因为它把AI、工作和个体价值从外部竞争拉回内部感受："
-            "年轻人真正需要的不是又一套效率命令，而是重新确认自己的感受仍然有判断价值。"
-        )
-        lines.append("")
+        if llm_payload:
+            reason = (llm_payload.get("best_topic_reason") or "").strip()
+            if not reason:
+                reason = f"它最适合做成本期，因为紧扣「{topic}」主题，来源充分且情绪共鸣与传播潜力兼具。"
+        else:
+            reason = f"它最适合做成本期，因为紧扣「{topic}」主题，来源充分且情绪共鸣与传播潜力兼具。"
+        if reason:
+            lines.append(reason)
+            lines.append("")
 
     lines.append("## 5分钟带标注初稿")
     lines.append("")
