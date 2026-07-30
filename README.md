@@ -15,25 +15,24 @@ cd director-skills && bash install_director_skills.sh
 cd director-skills && git pull && bash install_director_skills.sh
 ```
 
-## 远程 Cowork：安装后告诉 Claude
+## 远程 Cowork：安装后配置运行环境
 
-把下面整段粘贴进对话（把 token 换成管理员私下下发的 secret）：
+不要把 token 粘贴进模型对话。由管理员通过受控渠道下发，并在运行 Skill 的环境中配置：
 
-```text
-API_BASE = https://goes-equation-william-chances.trycloudflare.com
-我的 director token = <管理员私下下发的 secret>
-我的 ip_id = ip_biaoma_yeren
-请加载 director-core + director-ip-biaoma_yeren，按 Knowledge Proposal v2 流程工作。
+```bash
+export DIRECTOR_API_BASE="https://director.example.com"
+export DIRECTOR_TOKEN="$(security find-generic-password -w -s director-agent -a "$USER")"
+export DIRECTOR_IP_ID="ip_biaoma_yeren"
 ```
 
-换 IP 时只改 `ip_id` 与对应子包名（如 `director-ip-fuxiaoxin`）。
+macOS 示例使用钥匙串；CI/服务器应使用各自的 secret manager。换 IP 时只改 `DIRECTOR_IP_ID` 与对应子包名（如 `director-ip-fuxiaoxin`）。
 
 ## 自检 Tunnel
 
 ```bash
-curl -sS https://goes-equation-william-chances.trycloudflare.com/health
-curl -sS -H "Authorization: Bearer <你的token>" \
-  https://goes-equation-william-chances.trycloudflare.com/api/pipeline/me
+curl -sS "$DIRECTOR_API_BASE/health"
+curl -sS -H "Authorization: Bearer $DIRECTOR_TOKEN" \
+  "$DIRECTOR_API_BASE/api/pipeline/me"
 ```
 
 期望：`health` 返回 `{"status":"ok"}`；`/me` 返回你的 role / ip_scope。

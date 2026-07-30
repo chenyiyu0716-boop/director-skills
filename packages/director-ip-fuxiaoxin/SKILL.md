@@ -8,7 +8,7 @@ description: "富小新 IP 编导子包。当编导提到『富小新』『fuxia
 ## IP 身份
 - `ip_id`: `ip_fuxiaoxin`
 - `ip_name`: 富小新
-- director token：由管理员私下下发（勿写入 skill / 文档 / 截图；会话内告知 Claude）
+- director token：由管理员通过受控密钥渠道下发；运行时从 `DIRECTOR_TOKEN` 环境变量或密钥存储读取，勿写入 skill、文档、聊天记录或截图
 
 ## 工作方式
 1. 本子包只负责"我是富小新"。加载后由 **director-core 母技能** 接管全部工作流。

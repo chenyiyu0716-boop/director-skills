@@ -33,4 +33,4 @@ const sec = process.argv[2] || 'MS4wLjABAAAAuMHALmSkriuJg555upSQp4UJzhA0kJVrPqwZ
   });
   console.log(JSON.stringify(info, null, 2));
   await page.close().catch(() => {});
-})().catch((e) => { console.error('ERR', e && e.message); process.exit(0); });
+})().catch((e) => { console.error('ERR', e && e.message); process.exit(1); });

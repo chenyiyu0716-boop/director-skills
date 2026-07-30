@@ -18,8 +18,8 @@ packages/
 **需要重新发 skill 包**（至少 `director-core`；IP 子包若含硬编码 token 也请换成新版）：
 
 1. 把更新后的 `packages/director-core` + 对应 `director-ip-<slug>` 交给编导重新加载。
-2. 对话里只告知：`API_BASE`（隧道 https）+ 私下下发的 director token + `ip_id`。
-3. **不要**把真实 token 写进 skill 文件、飞书群公告或截图。
+2. 在运行环境配置 `DIRECTOR_API_BASE`、`DIRECTOR_TOKEN`、`DIRECTOR_IP_ID`；token 使用钥匙串或 secret manager 注入。
+3. **不要**把真实 token 写进 skill 文件、模型对话、飞书群公告或截图。
 
 隧道 URL：若 tunnel 未重启且仍可用，可继续用旧 `API_BASE`；重启 quick tunnel 后 URL 会变，需同步更新。
 

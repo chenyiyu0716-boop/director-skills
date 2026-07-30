@@ -5,43 +5,22 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: director-skills-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   syntax:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
-      - run: pip install pyyaml
-      - name: Validate JSON / YAML / shell / node / python / SKILL.md frontmatter
-        run: |
-          set -euo pipefail
-          fail=0
-          while IFS= read -r f; do
-            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" || { echo "JSON FAIL: $f"; fail=1; }
-          done < <(find . -name '*.json' -not -path '*/node_modules/*' -not -path '*/.git/*')
-          while IFS= read -r f; do
-            node --check "$f" || { echo "NODE FAIL: $f"; fail=1; }
-          done < <(find . -name '*.cjs' -not -path '*/node_modules/*' -not -path '*/.git/*')
-          while IFS= read -r f; do
-            bash -n "$f" || { echo "BASH FAIL: $f"; fail=1; }
-          done < <(find . -name '*.sh' -not -path '*/.git/*')
-          while IFS= read -r f; do
-            python3 -m py_compile "$f" || { echo "PY FAIL: $f"; fail=1; }
-          done < <(find . -name '*.py' -not -path '*/.git/*')
-          while IFS= read -r f; do
-            python3 -c "import yaml; yaml.safe_load(open('$f'))" || { echo "YAML FAIL: $f"; fail=1; }
-          done < <(find . \( -name '*.yaml' -o -name '*.yml' \) -not -path '*/.git/*')
-          while IFS= read -r f; do
-            python3 - <<PY || { echo "FRONTMATTER FAIL: $f"; fail=1; }
-          import re
-          t=open('$f').read()
-          m=re.match(r'^---\s*\n(.*?)\n---',t,re.S)
-          assert m, 'no frontmatter'
-          fm=m.group(1)
-          assert re.search(r'^\s*name\s*:',fm,re.M), 'missing name'
-          assert re.search(r'^\s*description\s*:',fm,re.M), 'missing description'
-          PY
-          done < <(find . -name 'SKILL.md')
-          exit $fail
+      - run: pip install --disable-pip-version-check pyyaml==6.0.2
+      - name: Validate tracked package files and committed secrets
+        run: python3 scripts/validate_repo.py

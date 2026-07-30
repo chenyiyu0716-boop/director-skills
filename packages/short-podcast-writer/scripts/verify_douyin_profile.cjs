@@ -11,13 +11,16 @@
  * profile is persisted to disk.
  *
  * Run with:
- *   NODE_PATH="/Users/pojian/Desktop/MVP/memory B/node_modules" \
- *     node verify_douyin_profile.cjs
+ *   MEMORY_B_ROOT="$HOME/repos/memory-b" \
+ *     NODE_PATH="$MEMORY_B_ROOT/node_modules" node verify_douyin_profile.cjs
  */
 const { chromium } = require('playwright');
 const { existsSync } = require('node:fs');
 
-const PROFILE = '/Users/pojian/Desktop/MVP/memory B/browser-profile/douyin-test';
+const path = require('node:path');
+const os = require('node:os');
+const memoryBRoot = process.env.MEMORY_B_ROOT || path.join(os.homedir(), 'repos', 'memory-b');
+const PROFILE = process.env.DOUYIN_PROFILE_DIR || path.join(memoryBRoot, 'browser-profile', 'douyin-test');
 const SENTINEL = '/tmp/douyin_verify_done';
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +

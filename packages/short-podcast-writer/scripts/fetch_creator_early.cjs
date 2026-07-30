@@ -228,5 +228,5 @@ function parseTime(txt) {
   console.error('ERR', e && e.message ? e.message : e);
   try { page.close().catch(() => {}); } catch {}
   try { if (typeof page0 !== 'undefined' && page0 !== page) page0.close().catch(() => {}); } catch {}
-  // 不调用 process.exit，避免缓冲日志在崩溃时丢失
+  process.exitCode = 1;
 });
