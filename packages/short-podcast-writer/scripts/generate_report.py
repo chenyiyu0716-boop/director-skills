@@ -32,18 +32,29 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 DEFAULT_TOPIC = "AI、工作与个体价值"
 
-# memory-B auto-detect candidates (absolute path first for the local machine,
-# then relative to this script for portability).
+# memory-B auto-detect candidates. Environment variables take precedence;
+# remaining fallbacks are user-home or repository-relative, never machine-specific.
 _MEMORY_B_REFERENCE_CANDIDATES = [
-    "/Users/pojian/Desktop/MVP/memory B/logs/instant_reference",
-    str(Path(__file__).resolve().parent / ".." / ".." / ".." / "memory B" / "logs" / "instant_reference"),
+    value
+    for value in (
+        os.environ.get("MEMORY_B_REFERENCE_DIR"),
+        str(Path.home() / "repos" / "memory-b" / "logs" / "instant_reference"),
+        str(Path(__file__).resolve().parents[4] / "memory-b" / "logs" / "instant_reference"),
+    )
+    if value
 ]
 _MEMORY_B_ROOT_CANDIDATES = [
-    "/Users/pojian/Desktop/MVP/memory B",
-    str(Path(__file__).resolve().parent / ".." / ".." / ".." / "memory B"),
+    value
+    for value in (
+        os.environ.get("MEMORY_B_ROOT"),
+        str(Path.home() / "repos" / "memory-b"),
+        str(Path(__file__).resolve().parents[4] / "memory-b"),
+    )
+    if value
 ]
 
 
@@ -410,7 +421,16 @@ def normalize_source(item: dict[str, Any], as_of: date) -> Source:
     quote_summary = first_text(item, "quote_summary", "original_summary", "summary", "cardTextPreview")
     if not quote_summary:
         quote_summary = "待补原话摘要"
-    status = "已核验" if url and parsed_date and quote_summary != "待补原话摘要" else "待补核验"
+    claimed_status = first_text(item, "verification_status", "verificationStatus", "status").lower()
+    explicitly_verified = item.get("verified") is True or claimed_status in {"已核验", "verified"}
+    status = (
+        "已核验"
+        if explicitly_verified
+        and is_verifiable_url(url)
+        and parsed_date
+        and quote_summary != "待补原话摘要"
+        else "待补核验"
+    )
     return Source(
         title=first_text(item, "title", "name") or "未命名来源",
         speaker=first_text(item, "speaker", "person", "creator", "account", "author") or "待补人物",
@@ -435,6 +455,19 @@ def first_text(item: dict[str, Any], *keys: str) -> str:
         if text:
             return text
     return ""
+
+
+def is_verifiable_url(raw: str) -> bool:
+    if not raw:
+        return False
+    parsed = urlparse(raw)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme in {"http", "https"} and bool(host) and host not in {
+        "example.com",
+        "www.example.com",
+        "example.org",
+        "www.example.org",
+    }
 
 
 def parse_publish_date(raw: str, as_of: date) -> date | None:

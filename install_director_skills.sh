@@ -3,10 +3,11 @@
 # 用法：bash install_director_skills.sh
 # 安装后编导/管理员可在 WorkBuddy 中直接调用 director-core / admin / 各IP子包
 
-set -e
+set -euo pipefail
 
-SKILLS_DIR="$HOME/.workbuddy/skills"
+SKILLS_DIR="${WORKBUDDY_SKILLS_DIR:-$HOME/.workbuddy/skills}"
 SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)/packages"
+PACKAGE_VERSION="${DIRECTOR_SKILLS_VERSION:-2.0.0}"
 
 if [ ! -d "$SOURCE_DIR" ]; then
     echo "❌ 找不到 packages 目录：$SOURCE_DIR"
@@ -15,38 +16,30 @@ fi
 
 mkdir -p "$SKILLS_DIR"
 
-# skill包列表
-PACKAGES=(
-    "director-core:编导母包"
-    "admin:管理员包"
-    "director-ip-biaoma_yeren:飙马野人IP子包"
-    "director-ip-xinran_diary:心冉日记IP子包"
-    "director-ip-xiee_dashubiao:邪恶大鼠标IP子包"
-    "director-ip-fuxiaoxin:富小新IP子包"
-    "director-ip-yeah:yeah IP子包"
-    "director-ip-dongcai:董香菜IP子包"
-)
-
-TIMESTAMP=$(date +%s%N | cut -c1-16)
+PACKAGES=()
+while IFS= read -r pkg_dir; do
+    PACKAGES+=("$pkg_dir")
+done < <(find "$SOURCE_DIR" -mindepth 2 -maxdepth 2 -name SKILL.md -print \
+    | sed 's#/SKILL.md$##' | sort)
 
 echo "📦 开始安装编导Agent Skill包..."
 echo ""
 
 installed=0
-for entry in "${PACKAGES[@]}"; do
-    pkg_name="${entry%%:*}"
-    display_name="${entry##*:}"
-    pkg_dir="$SOURCE_DIR/$pkg_name"
-    skill_dir="$SKILLS_DIR/skill_${TIMESTAMP}_${pkg_name}"
+for pkg_dir in "${PACKAGES[@]}"; do
+    pkg_name="$(basename "$pkg_dir")"
+    display_name="$pkg_name"
+    skill_dir="$SKILLS_DIR/skill_${pkg_name}"
 
     if [ ! -f "$pkg_dir/SKILL.md" ]; then
         echo "⚠️  跳过 $pkg_name（无SKILL.md）"
         continue
     fi
 
-    # 创建skill目录
+    # 使用稳定目录名做幂等升级，并复制完整包资源。
+    rm -rf "$skill_dir"
     mkdir -p "$skill_dir"
-    cp "$pkg_dir/SKILL.md" "$skill_dir/"
+    cp -R "$pkg_dir"/. "$skill_dir"/
 
     # 生成 workbuddy.json
     cat > "$skill_dir/workbuddy.json" << EOF
@@ -62,13 +55,13 @@ EOF
     cat > "$skill_dir/_skillhub_meta.json" << EOF
 {
     "name": "$pkg_name",
-    "installedAt": $TIMESTAMP,
+    "installedAt": $(date +%s),
     "source": "local_install",
-    "version": "2.0.0",
-    "skillId": "skill_${TIMESTAMP}_${pkg_name}",
+    "version": "$PACKAGE_VERSION",
+    "skillId": "skill_${pkg_name}",
     "examples_zh": [
         "加载$display_name",
-        "用$pkg_name出稿",
+        "用${pkg_name}出稿",
         "$display_name 帮我写脚本"
     ],
     "examples_en": [
